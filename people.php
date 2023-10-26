@@ -14,6 +14,21 @@
         type='text'
     />
 
+    <cms:editable
+        name='account'
+        label='Account'
+        type='relation'
+        masterpage='accounts.php'
+        has='one'
+        advanced_gui='1'
+    />
+
+    <cms:editable
+        name='credit_amount'
+        label='Credit amount'
+        type='text'
+    />
+
 </cms:template>
 
 <?php COUCH::invoke(); ?>
