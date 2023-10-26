@@ -17,8 +17,6 @@ COUCH.mosaicModalClose = function() {
  */
 COUCH.mosaicModalOpen = function() {
     var $this = $( this.st.el );  // this is $.magnificPopup.instance
-    $(this.wrap).attr( 'data-k-src', $this.attr('data-mfp-src') );
-
     window.KMosaic = {
         callBack: function( content, pid, update_link ) {
             var content_div;
@@ -88,7 +86,7 @@ COUCH.mosaicPopover = function( el, field_id ){
             $(source).each(function(index){
                 var item = $(this);
                 item.attr( 'data_mosaic_row', row_id );
-                COUCH.bindPopupIframe( item, COUCH.mosaicModalOpen, COUCH.mosaicModalClose, "mosaic-iframe add", true );
+                COUCH.bindPopupIframe( item, COUCH.mosaicModalOpen, COUCH.mosaicModalClose, "mosaic-iframe", true );
             });
 
             return $( '<div class="mosaic-popover"></div>' ).append( source );
@@ -100,7 +98,7 @@ COUCH.mosaicActions = function( el, field_id ){
     var row = el.closest('tr');
     var edit_icon = row.find('.col-actions .edit-row');
     edit_icon.attr( 'data_mosaic_row', row.attr('id') );
-    COUCH.bindPopupIframe( edit_icon, COUCH.mosaicModalOpen, COUCH.mosaicModalClose, 'mosaic-iframe edit', true );
+    COUCH.bindPopupIframe( edit_icon, COUCH.mosaicModalOpen, COUCH.mosaicModalClose, 'mosaic-iframe', true );
 
     var add_icon = row.find('.col-actions .add-row');
     add_icon.attr( 'data_mosaic_row', row.attr('id') );
@@ -116,6 +114,5 @@ COUCH.mosaicInit = function( field_id ){
 }
 
 $( function(){
-    COUCH.bindPopupIframe( COUCH.el.$content.find( ".mosaic.tableholder .btn.popup-iframe" ), COUCH.mosaicModalOpen, COUCH.mosaicModalClose, "mosaic-iframe add", true );
-    COUCH.bindPopupIframe( COUCH.el.$content.find( ".mosaic.tableholder .icon.popup-iframe" ), COUCH.mosaicModalOpen, COUCH.mosaicModalClose, "mosaic-iframe edit", true );
+    COUCH.bindPopupIframe( COUCH.el.$content.find( ".mosaic.tableholder .popup-iframe" ), COUCH.mosaicModalOpen, COUCH.mosaicModalClose, "mosaic-iframe", true );
 });

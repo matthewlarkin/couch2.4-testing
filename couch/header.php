@@ -49,8 +49,8 @@
 
     if( !defined('K_COUCH_DIR') ) die(); // cannot be loaded directly
 
-    define( 'K_COUCH_VERSION', '2.4' ); // Changes with every release
-    define( 'K_COUCH_BUILD', '20231006' ); // YYYYMMDD - do -
+    define( 'K_COUCH_VERSION', '2.3' ); // Changes with every release
+    define( 'K_COUCH_BUILD', '20220611' ); // YYYYMMDD - do -
 
     if( file_exists(K_COUCH_DIR.'config.php') ){
         require_once( K_COUCH_DIR.'config.php' );
@@ -61,7 +61,6 @@
     if( function_exists('mb_internal_encoding') ) mb_internal_encoding( K_CHARSET );
     define( 'K_CACHE_OPCODES', '1' );
     define( 'K_CACHE_SETTINGS', '0' );
-    if( !defined('K_CACHE_DIR') ) define( 'K_CACHE_DIR', K_COUCH_DIR . 'cache/' );
 
     // Check license
     // Ultra-simplified now that there is no IonCube involved :)
@@ -93,7 +92,7 @@
         // Authenticated users will always be served dynamically generated pages
         // Same if no_cache explicity asked for.
         if( !$auth && !$no_cache ){
-            $k_cache_dir = K_CACHE_DIR;
+            $k_cache_dir = K_COUCH_DIR . 'cache/';
             if( is_writable($k_cache_dir) ){
 
                 $k_cache_url = 'http' . ((K_HTTPS) ? 's://' : '://') . $_SERVER['HTTP_HOST'] .

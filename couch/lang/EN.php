@@ -275,4 +275,3 @@
     $t['month10'] = 'October';
     $t['month11'] = 'November';
     $t['month12'] = 'December';
-    $t['manage'] = 'Manage';

@@ -73,8 +73,6 @@
             $attr = $FUNCS->get_named_vars(
                         array( 'var'=>'',
                                'masterpage'=>'',
-                               'into'=>'',
-                               'scope'=>'',
                               ),
                         $params);
             extract( $attr );
@@ -91,8 +89,6 @@
                 $params = array();
                 $params[] = array( 'lhs'=>'var', 'op'=>'=', 'rhs'=>$var );
                 $params[] = array( 'lhs'=>'masterpage', 'op'=>'=', 'rhs'=>$global_tpl_name );
-                $params[] = array( 'lhs'=>'into', 'op'=>'=', 'rhs'=>$into );
-                $params[] = array( 'lhs'=>'scope', 'op'=>'=', 'rhs'=>$scope );
                 return $TAGS->get_field( $params, $node );
             }
         }

@@ -272,22 +272,12 @@
                         array( 'var'=>'',
                                'masterpage'=>'',
                                'page'=>'',
-                               'id'=>'',
-                               'into'=>'',
-                               'scope'=>'',
+                               'id'=>''
                               ),
                         $params);
             extract( $attr );
 
-            $var = trim( $var );
-            $into = trim( $into );
-            $scope = strtolower( trim($scope) );
-            if( $scope=='' ){ $scope='global'; }
-            elseif( $scope=='local' ){ $scope='parent'; } //local scope makes no sense
-            if( $scope!='parent' && $scope!='global' ){
-                die("ERROR: Tag \"".$node->name."\" has unknown scope " . $scope);
-            }
-
+            $var = trim($var);
             if( $var ){
                 if( !$masterpage ){
                     // use the current template
@@ -333,11 +323,7 @@
                     foreach( $node->children as $child ){
                         $html .= $child->get_HTML();
                     }
-                    $data = $html;
-                }
-
-                if( $into!='' ){
-                    $CTX->set( $into, $data, $scope );
+                    return $html;
                 }
                 else{
                     return $data;
@@ -363,13 +349,12 @@
                    );
             $varname = trim( $into );
             $scope = strtolower( trim($scope) );
-            if( $scope=='' ){ $scope='global'; }
-            elseif( $scope=='local' ){ $scope='parent'; } //local scope makes no sense
+            if( $scope=='' ) $scope='global';
             $trim = ( $trim==1 ) ? 1 : 0;
             $is_json = ( $is_json==1 ) ? 1 : 0;
 
             if( $varname ){
-                if( $scope!='parent' && $scope!='global' ){
+                if( $scope!='parent' && $scope!='global' ){ //local scope makes no sense
                     die("ERROR: Tag \"".$node->name."\" has unknown scope " . $scope);
                 }
 
@@ -1624,8 +1609,8 @@
             }
             else{
                 if( $AUTH->user->access_level >= K_ACCESS_LEVEL_SUPER_ADMIN ){
-                    if( !$FUNCS->is_title_clean($attr['name']) ){
-                        die( "ERROR: Tag \"".$node->name."\": 'name' attribute (".$attr['name'].") contains invalid characters. (Only lowercase[a-z], numerals[0-9], hyphen and underscore permitted.)" );
+                    if( !$FUNCS->is_variable_clean($attr['name']) ){
+                        die( "ERROR: Tag \"".$node->name."\": 'name' contains invalid characters. (Only lowercase[a-z], numerals[0-9] and underscore permitted. The first character cannot be a numeral)" );
                     }
                     if( substr($attr['name'], 0, 2)=='k_' ){
                         die("ERROR: Tag \"".$node->name."\": 'name' cannot begin with 'k_'. Reserved for system fields.");
@@ -1730,17 +1715,12 @@
                     @set_time_limit( 0 ); // make server wait
                     $start_time = time();
 
-                    $rs = null;
-                    // HOOK: get_pages_to_add_field_db
-                    $FUNCS->dispatch_event( 'get_pages_to_add_field_db', array(&$rs, &$f, $to_table, $prev_failed) );
-                    if( !is_array($rs) ){
-                        if( $prev_failed ){
-                            $stagger_limit = 500; // number of pages processed in a single run. Might require tweaking if script still times out
-                            $rs = $DB->select( K_TBL_PAGES . " p LEFT OUTER JOIN " . $to_table . " d ON (p.id = d.page_id AND d.field_id='". $DB->sanitize( $field_id ) ."')", array('*'), "p.template_id = '". $DB->sanitize( $PAGE->tpl_id ). "' AND d.page_id IS NULL LIMIT 0, ".$stagger_limit );
-                        }
-                        else{
-                            $rs = $DB->select( K_TBL_PAGES, array('*'), "template_id='" . $DB->sanitize( $PAGE->tpl_id ). "'" );
-                        }
+                    if( $prev_failed ){
+                        $stagger_limit = 500; // number of pages processed in a single run. Might require tweaking if script still times out
+                        $rs = $DB->select( K_TBL_PAGES . " p LEFT OUTER JOIN " . $to_table . " d ON (p.id = d.page_id AND d.field_id='". $DB->sanitize( $field_id ) ."')", array('*'), "p.template_id = '". $DB->sanitize( $PAGE->tpl_id ). "' AND d.page_id IS NULL LIMIT 0, ".$stagger_limit );
+                    }
+                    else{
+                        $rs = $DB->select( K_TBL_PAGES, array('*'), "template_id='" . $DB->sanitize( $PAGE->tpl_id ). "'" );
                     }
 
                     if( count($rs) ){
@@ -2332,8 +2312,7 @@
 
                     if( count($arr_custom_fields) || count($arr_custom_orderby) ){
                         // resolve custom field names to ids
-                        $rs_cf = $DB->raw_select( "SELECT * FROM ".K_TBL_FIELDS." WHERE template_id='".$DB->sanitize( $tpl_id )."'", 'name' );
-
+                        $rs_cf = $DB->select( K_TBL_FIELDS, array('*'), "template_id='" . $DB->sanitize( $tpl_id ). "'" );
                         $arr_tables = array();
                         $count = 0;
                         for( $x=0; $x<count($arr_custom_fields); $x++ ){
@@ -2370,41 +2349,44 @@
                                 continue;
                             }
 
-                            if( array_key_exists($arr_custom_fields[$x]['name'], $rs_cf) ){
-                                $f = $rs_cf[$arr_custom_fields[$x]['name']];
+                            for( $i=0; $i<count($rs_cf); $i++ ){
+                                $f = $rs_cf[$i];
+                                if( $f['name']==$arr_custom_fields[$x]['name'] ){
 
-                                // 'relation' field?
-                                if( in_array($f['k_type'], $arr_rel_types) ){
-                                    $arr_rel_fields[$masterpage][] = array( 'related_field'=>$f, 'name'=>$f['name'], 'op'=>$arr_custom_fields[$x]['op'], 'val'=>$arr_custom_fields[$x]['val'], 'id'=>$f['id'], 'is_aggregate'=>$arr_custom_fields[$x]['is_aggregate'] );
-                                    $arr_custom_fields[$x]['processed'] = 1;
-                                    continue;
-                                }
+                                    // 'relation' field?
+                                    if( in_array($f['k_type'], $arr_rel_types) ){
+                                        $arr_rel_fields[$masterpage][] = array( 'related_field'=>$f, 'name'=>$f['name'], 'op'=>$arr_custom_fields[$x]['op'], 'val'=>$arr_custom_fields[$x]['val'], 'id'=>$f['id'], 'is_aggregate'=>$arr_custom_fields[$x]['is_aggregate'] );
+                                        $arr_custom_fields[$x]['processed'] = 1;
+                                        continue 2;
+                                    }
 
-                                $arr_custom_fields[$x]['id'] = $f['id'];
-                                $arr_custom_fields[$x]['type'] = $f['search_type'];
-                                $arr_custom_fields[$x]['field_name'] = ( $f['search_type']=='text' ) ? 'search_value' : 'value';
+                                    $arr_custom_fields[$x]['id'] = $f['id'];
+                                    $arr_custom_fields[$x]['type'] = $f['search_type'];
+                                    $arr_custom_fields[$x]['field_name'] = ( $f['search_type']=='text' ) ? 'search_value' : 'value';
 
-                                if( $f['search_type']=='text' ){
-                                    if( $arr_custom_fields[$x]['op']=='=' || $arr_custom_fields[$x]['op']=='!=' ){
-                                        if( $arr_custom_fields[$x]['op']=='=' ) $arr_custom_fields[$x]['op'] = 'LIKE';
-                                        else $arr_custom_fields[$x]['op'] = 'NOT LIKE';
-                                        for( $c=0; $c<count($arr_custom_fields[$x]['val']); $c++ ){
-                                            $arr_custom_fields[$x]['val'][$c] = "%" . $arr_custom_fields[$x]['val'][$c] . "%";
+                                    if( $f['search_type']=='text' ){
+                                        if( $arr_custom_fields[$x]['op']=='=' || $arr_custom_fields[$x]['op']=='!=' ){
+                                            if( $arr_custom_fields[$x]['op']=='=' ) $arr_custom_fields[$x]['op'] = 'LIKE';
+                                            else $arr_custom_fields[$x]['op'] = 'NOT LIKE';
+                                            for( $c=0; $c<count($arr_custom_fields[$x]['val']); $c++ ){
+                                                $arr_custom_fields[$x]['val'][$c] = "%" . $arr_custom_fields[$x]['val'][$c] . "%";
+                                            }
                                         }
                                     }
-                                }
-                                if( $arr_custom_fields[$x]['op']=='==' ) $arr_custom_fields[$x]['op'] = '=';
-                                elseif( $arr_custom_fields[$x]['op']=='!==' ) $arr_custom_fields[$x]['op'] = '!=';
+                                    if( $arr_custom_fields[$x]['op']=='==' ) $arr_custom_fields[$x]['op'] = '=';
+                                    elseif( $arr_custom_fields[$x]['op']=='!==' ) $arr_custom_fields[$x]['op'] = '!=';
 
-                                if( !array_key_exists($f['name'], $arr_tables) ){
-                                    $arr_tables[$f['name']]['id'] = $f['id'];
-                                    $arr_tables[$f['name']]['tbl_name'] = ( $f['search_type']=='text' ) ? K_TBL_DATA_TEXT : K_TBL_DATA_NUMERIC;
-                                    $arr_tables[$f['name']]['alias'] = sprintf( "t%d", $count++ );
+                                    if( !array_key_exists($f['name'], $arr_tables) ){
+                                        $arr_tables[$f['name']]['id'] = $f['id'];
+                                        $arr_tables[$f['name']]['tbl_name'] = ( $f['search_type']=='text' ) ? K_TBL_DATA_TEXT : K_TBL_DATA_NUMERIC;
+                                        $arr_tables[$f['name']]['alias'] = sprintf( "t%d", $count++ );
 
+                                    }
+                                    $arr_custom_fields[$x]['table_name'] = $arr_tables[$f['name']]['alias'];
+                                    break;
                                 }
-                                $arr_custom_fields[$x]['table_name'] = $arr_tables[$f['name']]['alias'];
                             }
-                            else{
+                            if( !array_key_exists('id', $arr_custom_fields[$x]) ){
                                 die("ERROR: Custom Field \"".$arr_custom_fields[$x]['name']."\" does not exist in '" . $FUNCS->cleanXSS($masterpage) . "'" );
                             }
                         }
@@ -2501,23 +2483,27 @@
 
                         // resolve custom_fields used as order_by
                         foreach( $arr_custom_orderby as $k=>$v ){
-                            if( array_key_exists($k, $rs_cf) ){
-                                $f = $rs_cf[$k];
-
-                                // 'relation' field?
-                                if( in_array($f['k_type'], $arr_rel_types) ){
-                                    unset( $arr_orderby[$v] );
-                                    unset( $arr_order[$v] );
-                                    continue;
+                            $cf_found = 0;
+                            for( $i=0; $i<count($rs_cf); $i++ ){
+                                $f = $rs_cf[$i];
+                                if( $f['name']==$k ){
+                                    // 'relation' field?
+                                    if( in_array($f['k_type'], $arr_rel_types) ){
+                                        unset( $arr_orderby[$v] );
+                                        unset( $arr_order[$v] );
+                                        continue 2;
+                                    }
+                                    $cf_found = 1;
+                                    if( !array_key_exists($f['name'], $arr_tables) ){
+                                        $arr_tables[$f['name']]['id'] = $f['id'];
+                                        $arr_tables[$f['name']]['tbl_name'] = ( $f['search_type']=='text' ) ? K_TBL_DATA_TEXT : K_TBL_DATA_NUMERIC;
+                                        $arr_tables[$f['name']]['alias'] = sprintf( "t%d", $count++ );
+                                    }
+                                    $arr_orderby[$v] = $arr_tables[$f['name']]['alias'] . "." . ( ($f['search_type']=='text') ? 'search_value' : 'value' );
+                                    break;
                                 }
-                                if( !array_key_exists($f['name'], $arr_tables) ){
-                                    $arr_tables[$f['name']]['id'] = $f['id'];
-                                    $arr_tables[$f['name']]['tbl_name'] = ( $f['search_type']=='text' ) ? K_TBL_DATA_TEXT : K_TBL_DATA_NUMERIC;
-                                    $arr_tables[$f['name']]['alias'] = sprintf( "t%d", $count++ );
-                                }
-                                $arr_orderby[$v] = $arr_tables[$f['name']]['alias'] . "." . ( ($f['search_type']=='text') ? 'search_value' : 'value' );
                             }
-                            else{ die("ERROR: Unknown orderby clause \"".$FUNCS->cleanXSS( $k )."\""); }
+                            if( !$cf_found ) die("ERROR: Unknown orderby clause \"".$FUNCS->cleanXSS( $k )."\"");
                         }
 
                         // generate sql to query custom fields
@@ -5378,7 +5364,7 @@ FORM;
                     $charset = trim($params[$x]['rhs']);
                     continue;
                 }
-                elseif( $attr=='masterpage' || $attr=='page_id' || $attr=='mode' || $attr=='token' || $attr=='validate_bound' ||  $attr=='sub_template' ){ // Data-bound form's parameters
+                elseif( $attr=='masterpage' || $attr=='page_id' || $attr=='mode' || $attr=='token' || $attr=='validate_bound' ){ // Data-bound form's parameters
                     $$attr = trim($params[$x]['rhs']);
                     continue;
                 }
@@ -5418,7 +5404,6 @@ FORM;
             $pg = null;
             $page_id = ( isset($page_id) && $FUNCS->is_non_zero_natural($page_id) ) ? (int)$page_id : null;
             $validate_bound = ( $validate_bound==='1' ) ? 1 : 0;
-            $sub_tpl_id = null;
 
             // check if the form is data-bound
             if( $masterpage ){
@@ -5462,21 +5447,6 @@ FORM;
                                 die( "ERROR: Tag \"".$node->name."\" - cannot create page of non-clonable template" );
                             }
                             $page_id = -1;
-
-                            if( $sub_template ){
-                                if( class_exists('KSubTemplates') ){
-                                    $rs2 = $DB->select( K_TBL_PAGES.' p INNER JOIN '.K_TBL_TEMPLATES.' t ON p.template_id = t.id', array('p.id'), "t.name='".$DB->sanitize( KSubTemplates::_get_aux_tpl_name($masterpage) )."' AND page_name='".$DB->sanitize( $sub_template )."'" );
-                                    if( !count($rs2) ){  die( "ERROR: Tag \"".$node->name."\" - sub_template not found" ); }
-                                    $sub_tpl_id = $rs2[0]['id'];
-                                }
-                            }
-                        }
-
-                        if( $sub_tpl_id ){
-                            $listener_get_sub_template = function(&$subtpl_id) use($sub_tpl_id){
-                                $subtpl_id = $sub_tpl_id;
-                            };
-                            $FUNCS->add_event_listener( 'get_sub_template_of_new_page', $listener_get_sub_template );
                         }
 
                         // get the page being bound to and set it in context for the fields to use
@@ -5484,17 +5454,6 @@ FORM;
                         $pg = new KWebpage( $tpl_id, $page_id );
                         if( $pg->error ){
                             die( "ERROR: Tag \"".$node->name."\" - " . $pg->err_msg );
-                        }
-
-                        if( $sub_tpl_id ){
-                            $f = &$pg->_fields[KSubTemplates::subtpl_selector];
-                            if( $f ){
-                                $f->store_posted_changes( $sub_tpl_id );
-                                $f->not_active = array( 'code'=>array(new KNode(K_NODE_TYPE_TEXT, '', '', '1')), 'params'=>array() );
-                            }
-                            unset( $f );
-
-                            $FUNCS->remove_event_listener( 'get_sub_template_of_new_page', $listener_get_sub_template );
                         }
                     }
                 }
@@ -6555,7 +6514,7 @@ MAP;
         }
 
         function gpc( $params, $node ){
-            global $FUNCS, $CTX;
+            global $FUNCS;
             if( count($node->children) ) {die("ERROR: Tag \"".$node->name."\" is a self closing tag");}
 
             extract( $FUNCS->get_named_vars(
@@ -6564,8 +6523,6 @@ MAP;
                               'method'=>'', /* get/post/cookie */
                               'strip_tags'=>'1',
                               'default'=>'',
-                              'into'=>'',
-                              'scope'=>'',
                               ),
                         $params)
                    );
@@ -6575,13 +6532,6 @@ MAP;
             if( !in_array($method, array('get', 'post', 'cookie')) ){ $method=''; }
             $strip_tags = ( $strip_tags==0 ) ? 0 : 1;
             $has_default = ( strlen($default) ) ? 1 : 0;
-            $into = trim( $into );
-            $scope = strtolower( trim($scope) );
-            if( $scope=='' ){ $scope='global'; }
-            elseif( $scope=='local' ){ $scope='parent'; } //local scope makes no sense
-            if( $scope!='parent' && $scope!='global' ){
-                die("ERROR: Tag \"".$node->name."\" has unknown scope " . $scope);
-            }
 
             switch( $method ){
                 case 'get':
@@ -6607,12 +6557,7 @@ MAP;
             }
             if( $has_default && !strlen($val) ){ $val = $default; }
 
-            if( $into!='' ){
-                $CTX->set( $into, $val, $scope );
-            }
-            else{
-                return $val;
-            }
+            return $val;
         }
 
         function html_encode( $params, $node ){
