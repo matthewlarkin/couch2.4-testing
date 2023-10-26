@@ -34,15 +34,26 @@
         <cms:if action='create-manual'>
 
             <cms:db_persist
+                _masterpage='accounts.php'
+                _mode='create'
+                _auto_title='1'
+            ><cms:set account_id=k_last_insert_id scope='global' /></cms:db_persist>
+
+            <cms:db_persist
                 _masterpage='people.php'
                 _mode='create'
                 _auto_title='1'
                 first_name='Matthew'
                 last_name='Larkin'
-            >
+                credit_amount='100'
+                account=account_id
+            ><cms:set person_id=k_last_insert_id scope='global' />
                 
                 <cms:if k_success>
-                    <cms:pages masterpage='people.php' id=k_last_insert_id limit='1' show_future_entries='1'>
+                    <cms:pages masterpage='accounts.php' id=account_id limit='1' show_future_entries='1'>
+                        Successfully created account: <a href="<cms:admin_link />"><cms:show name /></a>
+                    </cms:pages>
+                    <cms:pages masterpage='people.php' id=person_id limit='1' show_future_entries='1'>
                         Successfully created person: <a href="<cms:admin_link />"><cms:show first_name /> <cms:show last_name /></a>
                     </cms:pages>
                 </cms:if>
