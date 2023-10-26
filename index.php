@@ -51,7 +51,7 @@
                 
                 <cms:if k_success>
                     <cms:pages masterpage='accounts.php' id=account_id limit='1' show_future_entries='1'>
-                        Successfully created account: <a href="<cms:admin_link />"><cms:show name /></a>
+                        Successfully created account: <a href="<cms:admin_link />"><cms:show k_page_title /></a><br /><br />
                     </cms:pages>
                     <cms:pages masterpage='people.php' id=person_id limit='1' show_future_entries='1'>
                         Successfully created person: <a href="<cms:admin_link />"><cms:show first_name /> <cms:show last_name /></a>
